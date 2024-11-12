@@ -242,27 +242,53 @@ def handle_balance(tokens, conn):
 
     return f"200 OK\n{balance_msg}", False
 
-#LIST
-def handle_list(tokens, conn):
-    if len(tokens) != 2:
-        return "403 Message format error\n", False
-
-    owner_id = int(tokens[1])
-
-    connection = sqlite3.connect(DB_FILE)
-    cursor = connection.cursor()
-
-    #get user's card list
-    cursor.execute("SELECT ID, cardName, cardType, rarity, count FROM PokemonCards WHERE ownerID = ?", (owner_id,))
+#NEW LIST FUNCTION
+def handle_list(tokens, client_address):
+    if client_address not in logged_in_users:
+        return "403 Not logged in\n", False
+    
+    user_id, is_root = logged_in_users[client_address]
+    
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    if is_root:
+        cursor.execute("SELECT ID, cardName, cardType, rarity, count, ownerID FROM PokemonCards")
+    
+    else:
+        cursor.execute("SELECT ID, cardName, cardType, rarity, count FROM PokemonCards WHERE ownerID = ?", (user_id,))
+    
     cards = cursor.fetchall()
-
-    if not cards:
+    conn.close()
+    
+    if cards:
+        card_list = "\n".join([f"{card[0]} {card[1]} {card[2]} {card[3]} {card[4]}" for card in cards])
+        return f"200 OK\nCards:\n{card_list}\n", False
+    
+    else:
         return "404 No cards found\n", False
 
-    card_list_msg = "\n".join([f"{card[0]} {card[1]} {card[2]} {card[3]} {card[4]}" for card in cards])
-    connection.close()
+# OLD LIST FUNCTION
+# def handle_list(tokens, conn):
+#     if len(tokens) != 2:
+#         return "403 Message format error\n", False
 
-    return f"200 OK\nThe list of records in the Pokémon cards table for current user {owner_id}:\n{card_list_msg}\n", False
+#     owner_id = int(tokens[1])
+
+#     connection = sqlite3.connect(DB_FILE)
+#     cursor = connection.cursor()
+
+#     #get user's card list
+#     cursor.execute("SELECT ID, cardName, cardType, rarity, count FROM PokemonCards WHERE ownerID = ?", (owner_id,))
+#     cards = cursor.fetchall()
+
+#     if not cards:
+#         return "404 No cards found\n", False
+
+#     card_list_msg = "\n".join([f"{card[0]} {card[1]} {card[2]} {card[3]} {card[4]}" for card in cards])
+#     connection.close()
+
+#     return f"200 OK\nThe list of records in the Pokémon cards table for current user {owner_id}:\n{card_list_msg}\n", False
 
 #server loop
 def run_server():
