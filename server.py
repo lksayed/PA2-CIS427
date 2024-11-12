@@ -25,7 +25,8 @@ def init_db():
             isRoot INTEGER NOT NULL DEFAULT 0
         )
     ''')
-
+    
+        
     #pokemon cards table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS PokemonCards (
@@ -40,18 +41,35 @@ def init_db():
         )
     ''')
 
-    #check for users, if none: create first user
-    cursor.execute("SELECT COUNT(*) FROM Users")
-    user_count = cursor.fetchone()[0]
-    if user_count == 0:
+#OLD CODE FROM PA1
+    # #check for users, if none: create first user
+    # cursor.execute("SELECT COUNT(*) FROM Users")
+    # user_count = cursor.fetchone()[0]
+    # if user_count == 0:
+    #     cursor.execute('''
+    #         INSERT INTO Users (email, firstName, lastName, userName, password, USDBalance, isRoot)
+    #         VALUES ('admin@example.com', 'Admin', 'User', 'admin', 'password', 100.0, 1)
+    #     ''')
+
+    #adding in users as defined in direction
+    users = [
+        ('root', 'Root', 'User', 'Root01', 100.00, 1),
+        ('mary', 'Mary', 'Smith', 'mary01', 100.00, 0),
+        ('john', 'John', 'Doe', 'john01', 100.00, 0),
+        ('moe', 'Moe', 'Howard', 'moe01', 100.00, 0),
+    ]
+    
+    for user in users:
         cursor.execute('''
-            INSERT INTO Users (email, firstName, lastName, userName, password, USDBalance, isRoot)
-            VALUES ('admin@example.com', 'Admin', 'User', 'admin', 'password', 100.0, 1)
-        ''')
+                       INSERT OR IGNORE INTO Users (email, firstName, lastName, userName, password, USDBalance, isRoot)
+                          VALUES (?, ?, ?, ?, ?, ?, ?)
+                          ''', user)
 
     conn.commit()
     conn.close()
 
+#tracking logged in users
+logged_in_users = {}
 
 #handling user commands
 def handle_client_command(command, conn, addr):
@@ -70,6 +88,34 @@ def handle_client_command(command, conn, addr):
         return "200 OK\n", False
     else:
         return "400 Invalid command\n", False
+
+#LOGIN
+def handle_login(tokens, client_addr):
+    if len(tokens) != 3:
+        return "403 Message format error\n", False
+    _, username, password = tokens
+    
+    #connecting to database
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT ID, isRoot FROM Users WHERE userName = ? AND password = ?", (username, password))
+    conn.close()
+    
+    if user:
+        user_id, is_root = user
+        logged_in_users[client_addr] = (user_id, is_root)
+        return "200 OK\n", False
+    
+    else:
+        return "403 Invalid username or password\n", False
+    
+#LOGOUT
+def handle_logout(client_addr):
+    if client_addr in logged_in_users:
+        del logged_in_users[client_addr]
+        return "200 OK\n", False
+    else:
+        return "403 User not logged in\n", False
 
 #BUY
 def handle_buy(tokens, conn):
