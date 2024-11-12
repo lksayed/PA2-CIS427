@@ -117,6 +117,21 @@ def handle_logout(client_address):
     else:
         return "403 User not logged in\n", False
     
+#QUIT
+def handle_quit(client_address):
+    if client_address in logged_in_users:
+        del logged_in_users[client_address]
+        print(f"User at {client_address} has logged out and disconnected.")
+    
+    return "200 OK\nClient connection closed.\n", False
+
+#SHUTDOWN
+def handle_shutdown(client_address):
+    if client_address not in logged_in_users or logged_in_users[client_address][1] == 0:
+        return "401 Unauthorized\n", False
+    
+    return "200 OK\nShutting down server...\n", True
+    
 #WHO
 def handle_who(client_address):
     if client_address not in logged_in_users or logged_in_users[client_address][1] == 0:
