@@ -72,7 +72,7 @@ def init_db():
 logged_in_users = {}
 
 #handling user commands
-def handle_client_command(command, conn, addr):
+def handle_client_command(command, conn, address):
     tokens = command.split()
     if tokens[0] == 'BUY':
         return handle_buy(tokens, conn)
@@ -90,7 +90,7 @@ def handle_client_command(command, conn, addr):
         return "400 Invalid command\n", False
 
 #LOGIN
-def handle_login(tokens, client_addr):
+def handle_login(tokens, client_address):
     if len(tokens) != 3:
         return "403 Message format error\n", False
     _, username, password = tokens
@@ -103,19 +103,50 @@ def handle_login(tokens, client_addr):
     
     if user:
         user_id, is_root = user
-        logged_in_users[client_addr] = (user_id, is_root)
+        logged_in_users[client_address] = (user_id, is_root)
         return "200 OK\n", False
     
     else:
         return "403 Invalid username or password\n", False
     
 #LOGOUT
-def handle_logout(client_addr):
-    if client_addr in logged_in_users:
-        del logged_in_users[client_addr]
+def handle_logout(client_address):
+    if client_address in logged_in_users:
+        del logged_in_users[client_address]
         return "200 OK\n", False
     else:
         return "403 User not logged in\n", False
+    
+#WHO
+def handle_who(client_address):
+    if client_address not in logged_in_users or logged_in_users[client_address][1] == 0:
+        return "401 Unauthorized\n", False
+    
+    active_users = "\n".join([f"{user[0]} {address}" for address, user in logged_in_users.items()])
+    return f"200 OK\nActive users:\n{active_users}\n", False
+
+#LOOKUP
+def handle_lookup(tokens, client_address):
+    if client_address not in logged_in_users:
+        return "403 Not logged in\n", False
+    
+    if len(tokens) != 2:
+        return "403 Message format error\n", False
+    
+    search_term = tokens[1]
+    user_id, _ = logged_in_users[client_address]
+    
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT ID, cardName, cardType, rarity, price, count FROM PokemonCards WHERE ownerID = ? AND cardName LIKE ?", (user_id, f"%{search_term}%"))
+    matches = cursor.fetchall()
+    conn.close()
+    
+    if matches:
+        match_list = "\n".join([f"{match[0]} {match[1]} {match[2]} {match[3]} {match[4]}" for match in matches])
+        return f"200 OK\nMatches found:\n{match_list}\n", False
+    else:
+        return "404 No matches found\n", False
 
 #BUY
 def handle_buy(tokens, conn):
