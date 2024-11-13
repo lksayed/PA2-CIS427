@@ -10,7 +10,7 @@ def run_client(server_host, server_port):
         if not command:
             continue
 
-        #connect to server
+        #connect to server                               
         try:
             client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client_socket.connect((server_host, server_port))
@@ -32,7 +32,7 @@ def run_client(server_host, server_port):
 
         finally:
             client_socket.close()
-
+                   
 if __name__ == "__main__":
     if len(sys.argv) != 3:
         print("Usage: python client.py <SERVER_HOST> <SERVER_PORT>")

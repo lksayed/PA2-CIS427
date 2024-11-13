@@ -71,23 +71,64 @@ def init_db():
 #tracking logged in users
 logged_in_users = {}
 
-#handling user commands
-def handle_client_command(command, conn, address):
+#NEW CLIENT COMMAND HANDLER
+def handle_client_command(command, client_address):
     tokens = command.split()
-    if tokens[0] == 'BUY':
-        return handle_buy(tokens, conn)
-    elif tokens[0] == 'SELL':
-        return handle_sell(tokens, conn)
-    elif tokens[0] == 'BALANCE':
-        return handle_balance(tokens, conn)
+    
+    if tokens[0] == 'LOGIN':
+        return handle_login(tokens, client_address)
+    
+    elif tokens[0] == 'LOGOUT':
+        return handle_logout(client_address)
+    
+    elif tokens[0] == 'DEPOSIT':
+        return handle_login(tokens, client_address)
+
+    elif tokens[0] == 'WHO':
+        return handle_who(client_address)
+    
+    elif tokens[0] == 'LOOKUP':
+        return handle_lookup(tokens, client_address)
+
     elif tokens[0] == 'LIST':
-        return handle_list(tokens, conn)
+        return handle_list(tokens, client_address)
+        
+    elif tokens[0] == 'BUY':
+        return handle_buy(tokens, client_address)
+    
+    elif tokens[0] == 'SELL':
+        return handle_sell(tokens, client_address)
+
+    elif tokens[0] == 'BALANCE':
+        return handle_balance(tokens, client_address)
+
     elif tokens[0] == 'SHUTDOWN':
-        return "200 OK\n", True
+        return handle_shutdown(client_address)
+
     elif tokens[0] == 'QUIT':
-        return "200 OK\n", False
+        return handle_quit(client_address)
+
     else:
         return "400 Invalid command\n", False
+
+#OLD CLIENT COMMAND HANDLER
+# #handling user commands
+# def handle_client_command(command, conn, address):
+#     tokens = command.split()
+#     if tokens[0] == 'BUY':
+#         return handle_buy(tokens, conn)
+#     elif tokens[0] == 'SELL':
+#         return handle_sell(tokens, conn)
+#     elif tokens[0] == 'BALANCE':
+#         return handle_balance(tokens, conn)
+#     elif tokens[0] == 'LIST':
+#         return handle_list(tokens, conn)
+#     elif tokens[0] == 'SHUTDOWN':
+#         return "200 OK\n", True
+#     elif tokens[0] == 'QUIT':
+#         return "200 OK\n", False
+#     else:
+#         return "400 Invalid command\n", False
 
 #LOGIN
 def handle_login(tokens, client_address):
