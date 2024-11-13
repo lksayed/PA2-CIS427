@@ -10,6 +10,7 @@ import os
 SERVER_HOST = 'localhost'
 SERVER_PORT = 9037
 DB_FILE = 'pokemon_trading.db'
+MAX_CONNECTIONS = 10
 
 #database init
 def init_db():
@@ -350,6 +351,35 @@ def handle_list(tokens, client_address):
 
 #     return f"200 OK\nThe list of records in the Pokémon cards table for current user {owner_id}:\n{card_list_msg}\n", False
 
+#new client handler
+def client_handler(client_socket, client_address):
+    try:
+        while True:
+            data = client_socket.recv(1024).decode('utf-8').strip()
+            
+            if not data:
+                break
+            
+            print(f"Received: {data} from {client_address}")
+            
+            response, shutdown_flag = handle_client_command(data, client_address)
+            
+            client_socket.sendall(response.encode('utf-8'))
+            
+            if shutdown_flag:
+                print("Shutting down server...")
+                os._exit(0)
+                
+            if data.startswith("QUIT"):
+                break
+            
+    except Exception as e:
+        print(f"An error occurred: {e} while handling client at {client_address}")
+        
+    finally:
+        client_socket.close()
+        print(f"{client_address}'s connection closed.")
+
 #server loop
 def run_server():
     init_db()
@@ -359,20 +389,31 @@ def run_server():
     server_socket.listen(5)
     print(f"Server listening on {SERVER_HOST}:{SERVER_PORT}...")
 
-    shutdown_flag = False
-    while not shutdown_flag:
-        client_socket, client_address = server_socket.accept()
-        print(f"Connection from {client_address}")
-
-        data = client_socket.recv(1024).decode('utf-8').strip()
-        print(f"Received: {data}")
-
-        response, shutdown_flag = handle_client_command(data, client_socket, client_address)
-
-        client_socket.sendall(response.encode('utf-8'))
-        client_socket.close()
-
-    server_socket.close()
+    sockets_list = [server_socket]
+    client_sockets = {}
+    
+    while True:
+        read_sockets, _, exception_sockets = select.select(sockets_list, [], sockets_list)
+        
+        for notified_socket in read_sockets:
+            if notified_socket == server_socket:
+                client_socket, client_address = server_socket.accept()
+                print(f"Connection from {client_address} accepted")
+                
+                sockets_list.append(client_socket)
+                client_sockets[client_socket] = client_address
+                
+            else:
+                client_thread = threading.Thread(target=client_handler, args=(notified_socket, client_sockets[notified_socket]))
+                client_thread.start()
+                
+                sockets_list.remove(notified_socket)
+                del client_sockets[notified_socket]
+        
+        for notified_socket in exception_sockets:
+            sockets_list.remove(notified_socket)
+            if notified_socket in client_sockets:
+                del client_sockets[notified_socket]
 
 if __name__ == "__main__":
     run_server()
