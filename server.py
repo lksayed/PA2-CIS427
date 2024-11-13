@@ -58,10 +58,10 @@ def init_db():
 
     #adding in users as defined in direction
     users = [
-        ('emailroot@ex.com', 'root', 'Root', 'User', 'Root01', 100.00, 1),
-        ('emailmary@ex.com', 'mary', 'Mary', 'Smith', 'mary01', 100.00, 0),
-        ('emailjohn@ex.com', 'john', 'John', 'Doe', 'john01', 100.00, 0),
-        ('emailmoe@ex.com', 'moe', 'Moe', 'Howard', 'moe01', 100.00, 0),
+        ('emailroot@ex.com', 'Root', 'User', 'root', 'Root01', 100.00, 1),
+        ('emailmary@ex.com', 'Mary', 'Smith', 'mary', 'mary01', 100.00, 0),
+        ('emailjohn@ex.com', 'John', 'Doe', 'john', 'john01', 100.00, 0),
+        ('emailmoe@ex.com', 'Moe', 'Howard', 'moe', 'moe01', 100.00, 0),
     ]
     
     for user in users:
@@ -87,7 +87,7 @@ def handle_client_command(command, client_address):
         return handle_logout(client_address)
     
     elif tokens[0] == 'DEPOSIT':
-        return handle_login(tokens, client_address)
+        return handle_deposit(tokens, client_address)
 
     elif tokens[0] == 'WHO':
         return handle_who(client_address)
@@ -248,8 +248,30 @@ def handle_buy(tokens, conn):
 
     return f"200 OK\nBOUGHT: New balance: {count} {card_name}. User USD balance ${new_balance:.2f}\n", False
 
+#DEPOSIT
+def handle_deposit(tokens, client_address):
+    if client_address not in logged_in_users:
+        return "403 Not logged in\n", False
+    
+    if len(tokens) != 2:
+        return "403 Message format error\n", False
+    
+    deposit_amount = float(tokens[1])
+    user_id, _ = logged_in_users[client_address]
+    
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE Users SET USDBalance = USDBalance + ? WHERE ID = ?", (deposit_amount, user_id))
+    conn.commit()
+    
+    cursor.execute("SELECT USDBalance FROM Users WHERE ID = ?", (user_id,))
+    new_balance = cursor.fetchone()[0]
+    conn.close()
+    
+    return f"200 OK\nDeposited ${deposit_amount:.2f}. New balance: ${new_balance:.2f}\n", False
+
 #SELL
-def handle_sell(tokens, conn):
+def handle_sell(tokens, client_address):
     if len(tokens) != 5:
         return "403 Message format error\n", False
     _, card_name, count, price_per_card, owner_id = tokens
@@ -283,7 +305,7 @@ def handle_sell(tokens, conn):
     return f"200 OK\nSOLD: New balance: {new_card_count} {card_name}. User’s balance USD ${new_balance:.2f}\n", False
 
 #BALANCE
-def handle_balance(tokens, conn):
+def handle_balance(tokens, client_address):
     if len(tokens) != 2:
         return "403 Message format error\n", False
 
