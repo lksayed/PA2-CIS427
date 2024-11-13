@@ -145,6 +145,7 @@ def handle_login(tokens, client_address):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute("SELECT ID, isRoot FROM Users WHERE userName = ? AND password = ?", (username, password))
+    user = cursor.fetchone()
     conn.close()
     
     if user:
