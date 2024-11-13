@@ -5,12 +5,12 @@ import sys
 def run_client(server_host, server_port):
     while True:
         #prompt user to enter command
-        command = input("Enter command (BUY, SELL, BALANCE, LIST, SHUTDOWN, QUIT): ").strip()
+        command = input("Enter command (LOGIN, LOGOUT, BUY, SELL, BALANCE, LIST, DEPOSIT, WHO, LOOKUP, SHUTDOWN, QUIT): ").strip()
 
         if not command:
             continue
 
-        #connect to server                               
+        #connect to server
         try:
             client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client_socket.connect((server_host, server_port))
@@ -29,10 +29,15 @@ def run_client(server_host, server_port):
         except ConnectionRefusedError:
             print("Failed to connect to server. Please check if the server is running.")
             break
+        
+        #additional exception handling
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            break
 
         finally:
             client_socket.close()
-                   
+
 if __name__ == "__main__":
     if len(sys.argv) != 3:
         print("Usage: python client.py <SERVER_HOST> <SERVER_PORT>")
