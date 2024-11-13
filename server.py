@@ -58,10 +58,10 @@ def init_db():
 
     #adding in users as defined in direction
     users = [
-        ('root', 'Root', 'User', 'Root01', 100.00, 1),
-        ('mary', 'Mary', 'Smith', 'mary01', 100.00, 0),
-        ('john', 'John', 'Doe', 'john01', 100.00, 0),
-        ('moe', 'Moe', 'Howard', 'moe01', 100.00, 0),
+        ('emailroot@ex.com', 'root', 'Root', 'User', 'Root01', 100.00, 1),
+        ('emailmary@ex.com', 'mary', 'Mary', 'Smith', 'mary01', 100.00, 0),
+        ('emailjohn@ex.com', 'john', 'John', 'Doe', 'john01', 100.00, 0),
+        ('emailmoe@ex.com', 'moe', 'Moe', 'Howard', 'moe01', 100.00, 0),
     ]
     
     for user in users:
