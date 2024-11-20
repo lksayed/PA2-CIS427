@@ -3,11 +3,17 @@ import sys
 
 #client config
 def run_client(server_host, server_port):
+    logged_in = False
+    
     while True:
         #prompt user to enter command
         command = input("Enter command (LOGIN, LOGOUT, BUY, SELL, BALANCE, LIST, DEPOSIT, WHO, LOOKUP, SHUTDOWN, QUIT): ").strip()
 
         if not command:
+            continue
+        
+        if not logged_in and not command.startswith("LOGIN") and not command.startswith("QUIT"):
+            print("Please login first.")
             continue
 
         #connect to server
@@ -22,7 +28,13 @@ def run_client(server_host, server_port):
             response = client_socket.recv(1024).decode('utf-8')
             print(f"Server response: {response}")
 
-            if command.startswith("QUIT") or command.startswith("SHUTDOWN"):
+            if command.startswith("LOGIN") and "200 OK" in response:
+                logged_in = True
+                
+            elif command.startswith("LOGOUT") and "200 OK" in response:
+                logged_in = False
+                
+            elif command.startswith("QUIT") or command.startswith("SHUTDOWN"):
                 print("Closing client.")
                 break
 
@@ -30,7 +42,6 @@ def run_client(server_host, server_port):
             print("Failed to connect to server. Please check if the server is running.")
             break
         
-        #additional exception handling
         except Exception as e:
             print(f"An error occurred: {e}")
             break
