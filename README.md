@@ -79,27 +79,27 @@
 ### Test Cases:
 | **Test #** | **Description of Test**            | **Input Value**                             | **Expected Output**                                             | **Pass/Fail** |
 |------------|------------------------------------|---------------------------------------------|-----------------------------------------------------------------|---------------|
-| 1          | Successful login                  | `LOGIN root Root01`                         | `200 OK`                                                        | Pass/Fail     |
-| 2          | Failed login (wrong password)     | `LOGIN root WrongPassword`                  | `403 Invalid username or password`                              | Pass/Fail     |
-| 3          | Failed login (missing fields)     | `LOGIN root`                                | `403 Message format error`                                      | Pass/Fail     |
-| 4          | Successful logout                 | `LOGOUT`                                    | `200 OK`                                                        | Pass/Fail     |
-| 5          | Logout without login              | `LOGOUT`                                    | `403 User not logged in`                                        | Pass/Fail     |
-| 6          | Successful deposit                | `DEPOSIT 50`                                | `200 OK\nDeposited $50.00. New balance: $150.00`                | Pass/Fail     |
-| 7          | Deposit without login             | `DEPOSIT 50`                                | `403 Not logged in`                                             | Pass/Fail     |
-| 8          | Deposit with invalid format       | `DEPOSIT`                                   | `403 Message format error`                                      | Pass/Fail     |
-| 9          | List cards (regular user)         | `LIST`                                      | `200 OK\nList of records in Pokémon cards for current user.`    | Pass/Fail     |
-| 10         | List all cards (root user)        | `LIST`                                      | `200 OK\nList of all Pokémon cards in the database.`            | Pass/Fail     |
-| 11         | List cards without login          | `LIST`                                      | `403 Not logged in`                                             | Pass/Fail     |
-| 12         | Successful lookup (partial match) | `LOOKUP Pikachu`                            | `200 OK\nMatches found:\n<ID> Pikachu Electric Common $[Price]` | Pass/Fail     |
-| 13         | Lookup with no match              | `LOOKUP RandomCard`                         | `404 No matches found`                                          | Pass/Fail     |
-| 14         | Lookup without login              | `LOOKUP Pikachu`                            | `403 Not logged in`                                             | Pass/Fail     |
-| 15         | Successful buy                    | `BUY Charizard Fire Rare 50 2 2`            | `200 OK\nBOUGHT: New balance: $[NewBalance].`                   | Pass/Fail     |
-| 16         | Buy with insufficient balance     | `BUY Charizard Fire Rare 5000 2 2`          | `402 Not enough USD balance`                                    | Pass/Fail     |
-| 17         | Successful sell                   | `SELL Charizard 2 50 2`                     | `200 OK\nSOLD: New balance: $[NewBalance].`                     | Pass/Fail     |
-| 18         | Check balance                     | `BALANCE 1`                                 | `200 OK\nBalance for user: $[Balance]`                          | Pass/Fail     |
-| 19         | Check balance without login       | `BALANCE 1`                                 | `403 Not logged in`                                             | Pass/Fail     |
-| 20         | WHO command (root user)           | `WHO`                                       | `200 OK\nActive users:\n<Username> <IP>`                        | Pass/Fail     |
-| 21         | WHO command (non-root user)       | `WHO`                                       | `401 Unauthorized`                                              | Pass/Fail     |
-| 22         | Shutdown (root user)              | `SHUTDOWN`                                  | `200 OK\nShutting down server...`                               | Pass/Fail     |
-| 23         | Shutdown (non-root user)          | `SHUTDOWN`                                  | `401 Unauthorized`                                              | Pass/Fail     |
-| 24         | Quit session                      | `QUIT`                                      | `200 OK\nClient connection closed.`                             | Pass/Fail     |
+| 1          | Successful login                  | `LOGIN root Root01`                         | `200 OK`                                                        | Pass     |
+| 2          | Failed login (wrong password)     | `LOGIN root WrongPassword`                  | `403 Invalid username or password`                              | Pass     |
+| 3          | Failed login (missing fields)     | `LOGIN root`                                | `403 Message format error`                                      | Pass     |
+| 4          | Successful logout                 | `LOGOUT`                                    | `200 OK`                                                        | Pass     |
+| 5          | Logout without login              | `LOGOUT`                                    | `Please login first`                                        | Pass     |
+| 6          | Successful deposit                | `DEPOSIT 50`                                | `200 OK\nDeposited $50.00. New balance: $150.00`                | Pass     |
+| 7          | Deposit without login             | `DEPOSIT 50`                                | `Please login first`                                             | Pass     |
+| 8          | Deposit with invalid format       | `DEPOSIT`                                   | `403 Message format error`                                      | Pass     |
+| 9          | List cards (regular user)         | `LIST`                                      | `200 OK\n(List of records in Pokémon cards for current user.)`    | Pass     |
+| 10         | List all cards (root user)        | `LIST`                                      | `200 OK\n(List of all Pokémon cards in the database.)`            | Pass     |
+| 11         | List cards without login          | `LIST`                                      | `Please login first`                                             | Pass     |
+| 12         | Successful lookup (partial match) | `LOOKUP Pikachu`                            | `200 OK\nMatches found:\n<ID> Pikachu Electric Common $[Price]` | Pass     |
+| 13         | Lookup with no match              | `LOOKUP RandomCard`                         | `404 No matches found`                                          | Pass     |
+| 14         | Lookup without login              | `LOOKUP Pikachu`                            | `Please login first`                                             | Pass     |
+| 15         | Successful buy                    | `BUY Charizard Fire Rare 50 2 2`            | `200 OK\nBOUGHT: New balance: $[NewBalance].`                   | Pass     |
+| 16         | Buy with insufficient balance     | `BUY Charizard Fire Rare 5000 2 2`          | `402 Not enough USD balance`                                    | Pass     |
+| 17         | Successful sell                   | `SELL Charizard 2 50 2`                     | `200 OK\nSOLD: New balance: $[NewBalance].`                     | Pass     |
+| 18         | Check balance                     | `BALANCE 1`                                 | `200 OK\nBalance for user: $[Balance]`                          | Pass     |
+| 19         | Check balance without login       | `BALANCE 1`                                 | `Please login first`                                             | Pass     |
+| 20         | WHO command (root user)           | `WHO`                                       | `200 OK\nActive users:\n<Username> <IP>`                        | Pass     |
+| 21         | WHO command (non-root user)       | `WHO`                                       | `401 Unauthorized`                                              | Pass     |
+| 22         | Shutdown (root user)              | `SHUTDOWN`                                  | `200 OK\nShutting down server...`                               | Pass     |
+| 23         | Shutdown (non-root user)          | `SHUTDOWN`                                  | `401 Unauthorized`                                              | Pass     |
+| 24         | Quit session                      | `QUIT`                                      | `200 OK\nClient connection closed.`                             | Pass     |
