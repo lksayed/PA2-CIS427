@@ -46,16 +46,6 @@ def init_db():
         )
     ''')
 
-#OLD CODE FROM PA1
-    # #check for users, if none: create first user
-    # cursor.execute("SELECT COUNT(*) FROM Users")
-    # user_count = cursor.fetchone()[0]
-    # if user_count == 0:
-    #     cursor.execute('''
-    #         INSERT INTO Users (email, firstName, lastName, userName, password, USDBalance, isRoot)
-    #         VALUES ('admin@example.com', 'Admin', 'User', 'admin', 'password', 100.0, 1)
-    #     ''')
-
     #adding in users as defined in direction
     users = [
         ('emailroot@ex.com', 'Root', 'User', 'root', 'Root01', 100.00, 1),
@@ -116,54 +106,53 @@ def handle_client_command(command, client_address):
     else:
         return "400 Invalid command\n", False
 
-#OLD CLIENT COMMAND HANDLER
-# #handling user commands
-# def handle_client_command(command, conn, address):
-#     tokens = command.split()
-#     if tokens[0] == 'BUY':
-#         return handle_buy(tokens, conn)
-#     elif tokens[0] == 'SELL':
-#         return handle_sell(tokens, conn)
-#     elif tokens[0] == 'BALANCE':
-#         return handle_balance(tokens, conn)
-#     elif tokens[0] == 'LIST':
-#         return handle_list(tokens, conn)
-#     elif tokens[0] == 'SHUTDOWN':
-#         return "200 OK\n", True
-#     elif tokens[0] == 'QUIT':
-#         return "200 OK\n", False
-#     else:
-#         return "400 Invalid command\n", False
-
 #LOGIN
 def handle_login(tokens, client_address):
     if len(tokens) != 3:
         return "403 Message format error\n", False
     _, username, password = tokens
-    
-    # Connect to the database
+
+    # connect to the database
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute("SELECT ID, isRoot FROM Users WHERE userName = ? AND password = ?", (username, password))
     user = cursor.fetchone()
     conn.close()
-    
+
     if user:
         user_id, is_root = user
-        logged_in_users[client_address] = (user_id, is_root)  # Mark the client as logged in
-        print(f"User {username} logged in from {client_address}.")
+
+        # debugging
+        print(f"LOGIN Command: User {username} ({user_id}) logged in from {client_address}. Root: {is_root}")
+
+        # add client address to the logged_in_users
+        if user_id not in logged_in_users:
+            logged_in_users[user_id] = (is_root, [client_address])
+        else:
+            if client_address not in logged_in_users[user_id][1]:
+                logged_in_users[user_id][1].append(client_address)
+
         return "200 OK\n", False
     else:
         return "403 Invalid username or password\n", False
-    
+  
 #LOGOUT
 def handle_logout(client_address):
-    if client_address in logged_in_users:
-        del logged_in_users[client_address]  # Remove the client from logged-in users
-        print(f"User at {client_address} has logged out.")
-        return "200 OK\n", False
-    else:
-        return "403 User not logged in\n", False
+    # find userID associated with client address
+    for user_id, (is_root, addresses) in list(logged_in_users.items()):
+        if client_address in addresses:
+            # remove the client address from list of addresses
+            addresses.remove(client_address)
+            
+            # if no addresses left, remove user from logged_in_users
+            if not addresses:
+                del logged_in_users[user_id]
+            
+            print(f"User at {client_address} has logged out.")
+            return "200 OK\n", False
+    
+    # if client address not found
+    return "403 User not logged in\n", False  
     
 #QUIT
 def handle_quit(client_address):
@@ -175,41 +164,67 @@ def handle_quit(client_address):
 
 #SHUTDOWN
 def handle_shutdown(client_address):
-    if client_address not in logged_in_users or logged_in_users[client_address][1] == 0:
-        return "401 Unauthorized\n", False
-    
-    return "200 OK\nShutting down server...\n", True
+    # check if client is logged in and is root
+    for user_id, (is_root, addresses) in logged_in_users.items():
+        if client_address in addresses:
+            if is_root != 1:  # user is not root
+                return "401 Unauthorized\n", False
+
+            # if root user, proceed
+            print("Shutdown command received from root user.")
+            return "200 OK\nShutting down server...\n", True
+
+    # if client not logged in
+    return "403 Not logged in\n", False
     
 #WHO
 def handle_who(client_address):
-    if client_address not in logged_in_users or logged_in_users[client_address][1] == 0:
-        return "401 Unauthorized\n", False
-    
-    active_users = "\n".join([f"{user[0]} {address}" for address, user in logged_in_users.items()])
-    return f"200 OK\nActive users:\n{active_users}\n", False
+    # check if client is logged in
+    for user_id, (is_root, addresses) in logged_in_users.items():
+        if client_address in addresses:
+            # if user logged in, check if root
+            if is_root != 1:  # not root
+                return "401 Unauthorized\n", False
+
+            # prepare list of active users
+            active_users = "\n".join([
+                f"UserID: {uid} | IPs: {', '.join(map(str, addrs))}" 
+                for uid, (_, addrs) in logged_in_users.items()
+            ])
+            return f"200 OK\nActive users:\n{active_users}\n", False
+
+    # if client is not logged in
+    return "403 Not logged in\n", False
 
 #LOOKUP
 def handle_lookup(tokens, client_address):
-    if client_address not in logged_in_users:
-        return "403 Not logged in\n", False
-    
-    if len(tokens) != 2:
-        return "403 Message format error\n", False
-    
-    search_term = tokens[1]
-    user_id, _ = logged_in_users[client_address]
-    
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("SELECT ID, cardName, cardType, rarity, price, count FROM PokemonCards WHERE ownerID = ? AND cardName LIKE ?", (user_id, f"%{search_term}%"))
-    matches = cursor.fetchall()
-    conn.close()
-    
-    if matches:
-        match_list = "\n".join([f"{match[0]} {match[1]} {match[2]} {match[3]} {match[4]}" for match in matches])
-        return f"200 OK\nMatches found:\n{match_list}\n", False
-    else:
-        return "404 No matches found\n", False
+    # iterate through logged_in_users and find client_address
+    for user_id, (is_root, addresses) in logged_in_users.items():
+        if client_address in addresses:
+            # check command format is correct
+            if len(tokens) != 2:
+                return "403 Message format error\n", False
+
+            search_term = tokens[1]
+
+            # check database for matching cards owned by logged-in user
+            conn = sqlite3.connect(DB_FILE)
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT ID, cardName, cardType, rarity, price, count FROM PokemonCards WHERE ownerID = ? AND cardName LIKE ?",
+                (user_id, f"%{search_term}%")
+            )
+            matches = cursor.fetchall()
+            conn.close()
+
+            if matches:
+                match_list = "\n".join([f"{match[0]} {match[1]} {match[2]} {match[3]} {match[4]} {match[5]}" for match in matches])
+                return f"200 OK\nMatches found:\n{match_list}\n", False
+            else:
+                return "404 No matches found\n", False
+
+    # if client address is not found, return not logged in
+    return "403 Not logged in\n", False
 
 #BUY
 def handle_buy(tokens, conn):
@@ -217,6 +232,7 @@ def handle_buy(tokens, conn):
         return "403 Message format error\n", False
     _, card_name, card_type, rarity, price_per_card, count, owner_id = tokens
     price_per_card = float(price_per_card)
+   
     count = int(count)
     owner_id = int(owner_id)
 
@@ -251,25 +267,33 @@ def handle_buy(tokens, conn):
 
 #DEPOSIT
 def handle_deposit(tokens, client_address):
-    if client_address not in logged_in_users:
-        return "403 Not logged in\n", False
-    
-    if len(tokens) != 2:
-        return "403 Message format error\n", False
-    
-    deposit_amount = float(tokens[1])
-    user_id, _ = logged_in_users[client_address]
-    
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("UPDATE Users SET USDBalance = USDBalance + ? WHERE ID = ?", (deposit_amount, user_id))
-    conn.commit()
-    
-    cursor.execute("SELECT USDBalance FROM Users WHERE ID = ?", (user_id,))
-    new_balance = cursor.fetchone()[0]
-    conn.close()
-    
-    return f"200 OK\nDeposited ${deposit_amount:.2f}. New balance: ${new_balance:.2f}\n", False
+    # iterate through logged_in_users and find client_address
+    for user_id, (is_root, addresses) in logged_in_users.items():
+        if client_address in addresses:
+            # check command format is correct
+            if len(tokens) != 2:
+                return "403 Message format error\n", False
+
+            try:
+                deposit_amount = float(tokens[1])
+            except ValueError:
+                return "403 Invalid deposit amount\n", False
+
+            # update user's balance in the database
+            conn = sqlite3.connect(DB_FILE)
+            cursor = conn.cursor()
+            cursor.execute("UPDATE Users SET USDBalance = USDBalance + ? WHERE ID = ?", (deposit_amount, user_id))
+            conn.commit()
+
+            # confirm new balance
+            cursor.execute("SELECT USDBalance FROM Users WHERE ID = ?", (user_id,))
+            new_balance = cursor.fetchone()[0]
+            conn.close()
+
+            return f"200 OK\nDeposited ${deposit_amount:.2f}. New balance: ${new_balance:.2f}\n", False
+
+    # otherwise, if user not logged in
+    return "403 Not logged in\n", False
 
 #SELL
 def handle_sell(tokens, client_address):
@@ -296,8 +320,10 @@ def handle_sell(tokens, client_address):
     #update user balance, card count
     cursor.execute("UPDATE PokemonCards SET count = ? WHERE ID = ?", (new_card_count, card_id))
     cursor.execute("SELECT USDBalance FROM Users WHERE ID = ?", (owner_id,))
+    
     user_balance = cursor.fetchone()[0]
     new_balance = user_balance + price_per_card * count
+    
     cursor.execute("UPDATE Users SET USDBalance = ? WHERE ID = ?", (new_balance, owner_id))
 
     connection.commit()
@@ -329,51 +355,30 @@ def handle_balance(tokens, client_address):
 
 #NEW LIST FUNCTION
 def handle_list(tokens, client_address):
-    if client_address not in logged_in_users:
-        return "403 Not logged in\n", False
-    
-    user_id, is_root = logged_in_users[client_address]
-    
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    
-    if is_root:
-        cursor.execute("SELECT ID, cardName, cardType, rarity, count, ownerID FROM PokemonCards")
-    
-    else:
-        cursor.execute("SELECT ID, cardName, cardType, rarity, count FROM PokemonCards WHERE ownerID = ?", (user_id,))
-    
-    cards = cursor.fetchall()
-    conn.close()
-    
-    if cards:
-        card_list = "\n".join([f"{card[0]} {card[1]} {card[2]} {card[3]} {card[4]}" for card in cards])
-        return f"200 OK\nCards:\n{card_list}\n", False
-    
-    else:
-        return "404 No cards found\n", False
+    # check if client logged in
+    for user_id, (is_root, addresses) in logged_in_users.items():
+        if client_address in addresses:
+            conn = sqlite3.connect(DB_FILE)
+            cursor = conn.cursor()
 
-# OLD LIST FUNCTION
-# def handle_list(tokens, conn):
-#     if len(tokens) != 2:
-#         return "403 Message format error\n", False
+            # root user can see all cards
+            if is_root:
+                cursor.execute("SELECT ID, cardName, cardType, rarity, count, ownerID FROM PokemonCards")
+            else:
+                # regular users only see own cards
+                cursor.execute("SELECT ID, cardName, cardType, rarity, count FROM PokemonCards WHERE ownerID = ?", (user_id,))
 
-#     owner_id = int(tokens[1])
+            cards = cursor.fetchall()
+            conn.close()
 
-#     connection = sqlite3.connect(DB_FILE)
-#     cursor = connection.cursor()
+            if cards:
+                card_list = "\n".join([f"{card[0]} {card[1]} {card[2]} {card[3]} {card[4]}" for card in cards])
+                return f"200 OK\nCards:\n{card_list}\n", False
+            else:
+                return "404 No cards found\n", False
 
-#     #get user's card list
-#     cursor.execute("SELECT ID, cardName, cardType, rarity, count FROM PokemonCards WHERE ownerID = ?", (owner_id,))
-#     cards = cursor.fetchall()
-
-#     if not cards:
-#         return "404 No cards found\n", False
-
-#     card_list_msg = "\n".join([f"{card[0]} {card[1]} {card[2]} {card[3]} {card[4]}" for card in cards])
-#     connection.close()
-
-#     return f"200 OK\nThe list of records in the Pokémon cards table for current user {owner_id}:\n{card_list_msg}\n", False
+    # if client not logged in
+    return "403 Not logged in\n", False
 
 #new client handler
 def client_handler(client_socket, client_address):
@@ -386,18 +391,18 @@ def client_handler(client_socket, client_address):
             
             print(f"Received: {data} from {client_address}")
             
-            # Process the command
+            # process command
             response, shutdown_flag = handle_client_command(data, client_address)
             
-            # Send back the server's response
+            # send server's response
             client_socket.sendall(response.encode('utf-8'))
             
-            # Handle shutdown command explicitly
+            # handle shutdown
             if shutdown_flag:  # For SHUTDOWN command
                 print("Shutting down server...")
                 os._exit(0)
             
-            # If client sends QUIT, terminate the session
+            # client sends QUIT, terminate session
             if data.startswith("QUIT"):
                 print(f"User at {client_address} has disconnected.")
                 break
